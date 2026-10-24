@@ -186,3 +186,43 @@ Shared rules that emerged:
 - **Prefer row/column alignment over rotated diagonal lattices** when the figure must be read
   precisely. A diamond layout looks elegant and makes label-to-mark association ambiguous at
   small sizes.
+
+---
+
+## Two layouts that are all structure
+
+Both of these are worth building once, because their value is entirely in the geometry and
+a square-matrix substitute loses it.
+
+### Diamond-lattice triangular correlation plot
+
+Variables label the two upper edges; every pair `(i, j)` sits where the descending diagonal
+from label `i` meets the ascending one from label `j`. Bubble area is `|r|`, colour is the
+sign of `r`, a second size legend carries the p-value, and one edge of the triangle is drawn
+with large open circles as a visual spine.
+
+Why not a square matrix: a reader finds any pair by tracing two lines, with no need to scan
+for a row and a column. Why it is hard: the label run along one diagonal is one lattice step
+per variable, so the rotated text must fit inside a step. Compact aliases and a canvas wide
+enough for the run are both required — enlarging the canvas alone does not help.
+
+```python
+def lattice(i, j):
+    return (j - i, -(i + j))     # two diagonal families at 45 degrees
+```
+
+### Scatter matrix with a correlation network on the upper triangle
+
+The lower triangle is ordinary pairwise scatters. The upper triangle is deliberately empty,
+and that emptiness carries the network: trait nodes climb the diagonal, and curved edges
+join them, coloured by the sign of `r`, dashed when `p ≥ 0.05`, thickened by `|r|`.
+
+Two placement rules decide whether it reads:
+
+- **Nodes climb.** One cell of height per index. Put them all on one horizontal line and the
+  arcs collapse into an unreadable braid.
+- **Curvature is generous and signed.** `arc3,rad` around −0.3 makes edges bow above the
+  diagonal; a small value produces almost-straight lines that no longer read as a network.
+
+Keep the network on its own frameless axes so it can overlap the matrix without fighting it
+for layout.

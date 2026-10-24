@@ -243,3 +243,28 @@ the font below the 6 pt floor is not an option.
 - *Over-correction.* After a fix the spacing can become so generous that the figure reads
   as disconnected — a colourbar floating far from the series it belongs to. Only looking at
   the whole figure catches this.
+
+---
+
+## A silent check is worse than no check
+
+While replicating a diamond-lattice correlation plot and a scatter matrix with a network
+overlay, `sf_lint.py --run` reported **zero findings on both** — and had inspected nothing.
+An exception inside the figure walk was caught and downgraded to a warning, so every check
+after that point never ran. The output looked like a clean pass.
+
+Three fixes, all of which matter more than any individual check:
+
+- **A crashed inspection is an error, not a warning.** It means the L2 results are
+  incomplete, which is a different statement from "the figure has a problem".
+- **Frameless axes are not panels.** `fig.add_axes(..., frameon=False)` is how annotation
+  layers, network overlays, and hand-built legends are drawn on top of a panel whose
+  geometry they reuse. Overlapping one is the design, not a defect. `get_frame_on()` is the
+  signal; the patch and spine objects keep their defaults and are merely skipped at draw.
+- **`ax.axis("off")` means the cell is reserved.** In a matrix layout the upper triangle is
+  intentionally empty so an overlay can use it. `ax.axison` distinguishes that from a
+  panel someone forgot to fill.
+
+The general lesson: after changing how text or axes are collected, **prove the checks still
+fire** by injecting a known defect. A refactor that breaks the walk looks exactly like a
+figure with nothing wrong with it.

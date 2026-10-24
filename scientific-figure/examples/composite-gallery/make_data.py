@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["numpy", "pandas"]
 # ///
-"""Shared synthetic data for the four replication figures."""
+"""Shared synthetic data for the composite-gallery figures."""
 import numpy as np, pandas as pd
 from pathlib import Path
 
@@ -45,4 +45,39 @@ tc = rng.normal(size=(300, len(traits)))
 tc[:, 0] = 0.7*tc[:, 1] + 0.5*rng.normal(size=300)
 tc[:, 2] = -0.5*tc[:, 1] + 0.6*rng.normal(size=300)
 pd.DataFrame(tc, columns=traits).to_csv(OUT / "traits.csv", index=False)
+
+
+# --- 11 variables: Feature_1..Feature_10 + Target_Y -----------------------
+n = 11
+names = [f"Feature_{i}" for i in range(1, n)] + ["Target_Y"]
+k = len(names)
+Z = rng.normal(size=(500, k))
+# Target_Y (last) driven by Feature_1, Feature_4 and Feature_7 — a realistic pattern
+Z[:, 10] += 0.75 * Z[:, 0] + 0.55 * Z[:, 3] + 0.45 * Z[:, 6]
+# a correlated block among Features 2-5
+f = rng.normal(size=(500, 1))
+Z[:, 1:5] = 0.45 * f + (1 - 0.45) * Z[:, 1:5]
+pd.DataFrame(Z, columns=names).to_csv(OUT / "corr11.csv", index=False)
+
+# --- 8 traits x 4 sites ---------------------------------------------------
+sites = ["CB", "DL", "DH", "XSBN"]
+traits = ["G_vmax", "V_cmax", "WUE_i", "Leaf_N", "Chl", "SLA", "Stomatal_density", "Pore_length"]
+rows = []
+for site, offset in zip(sites, (-0.6, -0.1, 0.4, 1.1)):
+    m = 90
+    T = rng.normal(size=(m, len(traits)))
+    # the network the figure should show: G-V strongly +, WUE- against both,
+    # leaf economy traits (N, Chl, SLA) positively coupled
+    T[:, 0] = 0.80 * T[:, 1] + 0.5 * rng.normal(size=m)
+    T[:, 2] = -0.62 * T[:, 1] + 0.6 * rng.normal(size=m)
+    T[:, 4] = 0.70 * T[:, 3] + 0.5 * rng.normal(size=m)
+    T[:, 5] = 0.55 * T[:, 4] + 0.6 * rng.normal(size=m)
+    T[:, 7] = 0.40 * T[:, 6] + 0.7 * rng.normal(size=m)
+    T[:, 0] += offset
+    for row in T:
+        rec = {"Site": site, "Leaf_type": rng.choice(["Deciduous", "Evergreen"], p=[0.6, 0.4])}
+        rec.update({t: v for t, v in zip(traits, row)})
+        rows.append(rec)
+pd.DataFrame(rows).to_csv(OUT / "traits.csv", index=False)
+
 print("data written to", OUT)

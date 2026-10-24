@@ -619,7 +619,7 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
     # overflow is normal. Only report text that escapes the canvas by a large
     # margin, which indicates a layout error rather than ordinary label extent.
     escape = max(fig_box.width, fig_box.height) * 0.12
-    for text, _, box in texts:
+    for text, _ax, _role, box in texts:
         if box[0] < -escape or box[1] < -escape or box[2] > fig_box.width + escape or box[3] > fig_box.height + escape:
             report.add(
                 "L2",
@@ -679,7 +679,12 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
             )
             if frac > 0.05:
                 inset = axa.get_label() == "<colorbar>" or axb.get_label() == "<colorbar>"
-                if not inset:
+                # Only framed axes are panels. A frameless axes is annotation or a
+                # hand-built legend, and overlapping a panel on purpose is exactly how
+                # those are composed.
+                framed = axa.get_frame_on() and axb.get_frame_on()
+                overlay = _is_transparent_overlay(axa) or _is_transparent_overlay(axb)
+                if framed and not inset and not overlay:
                     report.add(
                         "L2",
                         "panel-overlap",
@@ -719,7 +724,13 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
         if ax.get_label() == "<colorbar>":
             continue
         has_data = bool(ax.get_lines() or ax.collections or ax.patches or ax.images)
-        if not has_data:
+        # A cell that carries only a text label is intentional in a matrix layout
+        # (diagonal name boxes), so it is not an empty panel.
+        has_text = any(t.get_visible() and t.get_text().strip() for t in ax.texts)
+        # ax.axison is False when the axes was switched off with ax.axis("off") — an
+        # upper-triangle cell reserved for an overlay, not a forgotten panel.
+        drawn = getattr(ax, "axison", True) and ax.get_frame_on()
+        if not has_data and not has_text and drawn:
             report.add("L2", "empty-axes", "warn", "an axes has no plotted data", label, "remove the empty panel")
 
     # --- aspect and canvas facts ---
@@ -742,6 +753,20 @@ def _axes_index(fig: Any, ax: Any) -> int:
         if candidate is ax:
             return index
     return -1
+
+
+def _is_transparent_overlay(ax: Any) -> bool:
+    """An axes drawn purely for annotation, with no frame of its own.
+
+    ``fig.add_axes(..., frameon=False)`` is how annotation layers, network overlays, and
+    hand-built legends are drawn on top of a panel whose geometry they deliberately
+    reuse. ``get_frame_on()`` is the only reliable signal — the patch and spine objects
+    keep their default properties and are merely skipped at draw time.
+    """
+    try:
+        return not ax.get_frame_on()
+    except Exception:
+        return False
 
 
 def _short(value: str, limit: int = 28) -> str:
@@ -889,7 +914,18 @@ def run_runtime(path: Path, report: Report) -> None:
         try:
             inspect_figure(fig, label, report)
         except Exception as exc:
-            report.add("L2", "inspect", "warn", f"could not inspect figure '{label}': {exc}", str(path))
+            # A crash here means the checks did not run at all. Reporting it as a
+            # warning would let a figure pass L2 with zero findings while nothing was
+            # inspected, which is worse than a noisy failure.
+            report.add(
+                "L2",
+                "inspect-crashed",
+                "error",
+                f"the layout checks could not run on '{label}': {type(exc).__name__}: {exc}",
+                str(path),
+                "this is a bug in sf_lint, not in the figure; the L2 results are incomplete",
+            )
+            report.facts["inspect_error"] = traceback.format_exc()[-1500:]
     plt.close("all")
 
 
