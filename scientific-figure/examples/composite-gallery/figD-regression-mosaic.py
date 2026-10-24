@@ -58,8 +58,8 @@ for index, model in enumerate(models):
     # ±20% band, the reference's tolerance envelope
     ax_main.fill_between([lo, hi], [lo * 0.8, hi * 0.8], [lo * 1.2, hi * 1.2],
                          color="#B9B9B9", alpha=0.35, linewidth=0, zorder=1)
-    ax_main.text(72, 44, "+20%", rotation=32, fontsize=6, color="#B22222")
-    ax_main.text(34, 62, "-20%", rotation=32, fontsize=6, color="#B22222")
+    ax_main.text(74, 52, "+20%", rotation=32, fontsize=6, color="#B22222")
+    ax_main.text(52, 34, "-20%", rotation=32, fontsize=6, color="#B22222")
 
     ax_main.set_xlim(lo, hi); ax_main.set_ylim(lo, hi)
     ax_main.set_xticks([20, 50, 80]); ax_main.set_yticks([20, 50, 80])
@@ -76,10 +76,10 @@ for index, model in enumerate(models):
     # The metrics box goes OUTSIDE the plotted area. Inside it covered the fit line —
     # the runtime lint flagged '-20%' overlapping the box, and the data underneath.
     ax_main.text(
-        1.03, 0.98,
+        0.03, 0.97,
         f"Test Metrics:\n$R^2$: {r2:.3f}\nRMSE: {rmse:.2f}\nMAE: {mae:.2f}\n"
         f"MAPE: {mape:.3f}\nMedAE: {medae:.2f}",
-        transform=ax_main.transAxes, va="top", ha="left", fontsize=6.0, clip_on=False,
+        transform=ax_main.transAxes, va="top", ha="left", fontsize=6.0,
         bbox={"boxstyle": "round,pad=0.28", "facecolor": "white", "edgecolor": "#8C8C8C", "linewidth": 0.5},
     )
 

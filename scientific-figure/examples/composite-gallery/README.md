@@ -39,7 +39,10 @@ All four passed the static layer immediately and failed the runtime layer:
 `figC`'s first passing version had **zero collisions and was still wrong**: rotated labels
 sat closer to the neighbouring row than to their own, so a reader could not tell which trait
 a bubble belonged to. `figA`'s first passing version had the colourbar so far from the
-beeswarm that they read as unrelated. Both were caught only by looking at the whole figure.
+beeswarm that they read as unrelated. `figD`'s metrics box, moved outside the axes to escape
+the fit line, landed underneath the neighbouring histogram — a cross-panel occlusion that
+produces no bbox overlap and so trips no check. All three were caught only by looking at the
+whole figure.
 
 That is the argument for the crop-and-look pass, and for reviewing composition separately
 from reviewing collisions.
