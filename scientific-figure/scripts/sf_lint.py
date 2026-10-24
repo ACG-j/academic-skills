@@ -472,29 +472,38 @@ def _savefig_bbox_mode(path: Path) -> str | None:
     return None
 
 
-def _collect_texts(fig: Any) -> list[tuple[Any, Any]]:
-    """Every visible Text object with non-empty content, plus its owner axes."""
-    out: list[tuple[Any, Any]] = []
+# Roles that are expected to sit next to each other. An x-tick label and a y-tick
+# label sharing a corner is how matplotlib draws axes, not a defect; the same pair of
+# texts overlapping in the middle of the plot is a defect.
+ADJACENT_ROLES = {("xtick", "ytick")}
+
+
+def _collect_texts(fig: Any) -> list[tuple[Any, Any, str]]:
+    """Every visible Text object with non-empty content, its owner axes, and its role."""
+    out: list[tuple[Any, Any, str]] = []
     for ax in fig.axes:
-        for text in (ax.title, ax.xaxis.label, ax.yaxis.label):
+        for text in (ax.title,):
             if text.get_visible() and text.get_text().strip():
-                out.append((text, ax))
+                out.append((text, ax, "title"))
+        for text in (ax.xaxis.label, ax.yaxis.label):
+            if text.get_visible() and text.get_text().strip():
+                out.append((text, ax, "axis-label"))
         for text in ax.texts:
             if text.get_visible() and text.get_text().strip():
-                out.append((text, ax))
-        for axis in (ax.xaxis, ax.yaxis):
+                out.append((text, ax, "annotation"))
+        for axis, role in ((ax.xaxis, "xtick"), (ax.yaxis, "ytick")):
             for tick in axis.get_major_ticks() + axis.get_minor_ticks():
                 for label in (tick.label1, tick.label2):
                     if label.get_visible() and label.get_text().strip():
-                        out.append((label, ax))
+                        out.append((label, ax, role))
         legend = ax.get_legend()
         if legend is not None and legend.get_visible():
             for text in legend.get_texts():
                 if text.get_text().strip():
-                    out.append((text, ax))
+                    out.append((text, ax, "legend"))
     for text in fig.texts:
         if text.get_visible() and text.get_text().strip():
-            out.append((text, None))
+            out.append((text, None, "figure-text"))
     return out
 
 
@@ -544,7 +553,7 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
     # --- tiny and oversized fonts ---
     too_small: dict[float, int] = {}
     too_large: dict[float, int] = {}
-    for text, _ in _collect_texts(fig):
+    for text, _ax, _role in _collect_texts(fig):
         size = _font_size(text)
         if size <= 0:
             continue
@@ -567,27 +576,40 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
         report.add("L2", "font-size", "info", f"text above {MAX_FONT_PT} pt ({sizes})", label, "check the size hierarchy")
 
     # --- text collisions ---
-    texts = [(t, ax, _bbox(t, renderer)) for t, ax in _collect_texts(fig)]
-    texts = [(t, ax, box) for t, ax, box in texts if box is not None]
+    texts = [(t, ax, role, _bbox(t, renderer)) for t, ax, role in _collect_texts(fig)]
+    texts = [(t, ax, role, box) for t, ax, role, box in texts if box is not None]
     collisions = 0
     for i in range(len(texts)):
         for j in range(i + 1, len(texts)):
-            ta, axa, ba = texts[i]
-            tb, axb, bb = texts[j]
+            ta, axa, rolea, ba = texts[i]
+            tb, axb, roleb, bb = texts[j]
             if _overlap_fraction(ba, bb) <= OVERLAP_FRAC:
                 continue
-            # Tick labels of the same axis legitimately abut; only flag real overlap.
-            if ta.get_text().strip() == tb.get_text().strip():
+            # The same string in the same role is the same label counted twice
+            # (major and minor tick objects can both exist at one position).
+            if ta.get_text().strip() == tb.get_text().strip() and rolea == roleb:
                 continue
+            # An x-tick label meeting a y-tick label at the origin is how axes are
+            # drawn. Only treat it as a defect when the overlap is substantial, which
+            # means the corner is genuinely cramped rather than merely adjacent.
+            if {rolea, roleb} in ADJACENT_ROLES and axa is axb:
+                if _overlap_fraction(ba, bb) < 0.35:
+                    continue
             collisions += 1
             if collisions <= 6:
+                where_a = _axes_index(fig, axa)
+                where_b = _axes_index(fig, axb)
+                if where_a == where_b:
+                    location = f"axes {where_a}"
+                else:
+                    location = f"axes {where_a} vs {where_b}"
                 report.add(
                     "L2",
                     "text-collision",
                     "error",
-                    f"'{_short(ta.get_text())}' overlaps '{_short(tb.get_text())}'",
-                    label,
-                    "move, shorten, or rotate one of them; reduce tick density",
+                    f"{rolea} '{_short(ta.get_text())}' overlaps {roleb} '{_short(tb.get_text())}'",
+                    f"{label} @ {location}",
+                    "increase the gap between these subplots (wspace/hspace), or thin the ticks",
                 )
     if collisions > 6:
         report.add("L2", "text-collision", "error", f"{collisions} text collisions total", label, "reduce label density")
@@ -712,9 +734,63 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
     )
 
 
+def _axes_index(fig: Any, ax: Any) -> int:
+    """Position of an axes in fig.axes, so a finding can name which panel it is."""
+    if ax is None:
+        return -1
+    for index, candidate in enumerate(fig.axes):
+        if candidate is ax:
+            return index
+    return -1
+
+
 def _short(value: str, limit: int = 28) -> str:
     text = " ".join(str(value).split())
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _declared_dependencies(path: Path) -> list[str]:
+    """Read the PEP 723 dependency list from a script header, if it has one."""
+    try:
+        head = path.read_text(encoding="utf-8")[:4000]
+    except OSError:
+        return []
+    match = re.search(r"#\s*dependencies\s*=\s*\[([^\]]*)\]", head)
+    if not match:
+        return []
+    return [item.strip().strip("'\"") for item in match.group(1).split(",") if item.strip()]
+
+
+def _missing_imports(path: Path) -> list[str]:
+    """Third-party modules the script imports that this interpreter cannot import.
+
+    The runtime layer executes the target script in *this* process, so the script's own
+    dependencies must already be importable. When they are not, reporting "script failed:
+    ModuleNotFoundError" is unhelpful — the script is fine, the harness is under-provisioned.
+    Reading the script's PEP 723 header turns that into an actionable instruction.
+    """
+    import ast
+    import importlib.util
+
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return []
+    stdlib = set(sys.stdlib_module_names) if hasattr(sys, "stdlib_module_names") else set()
+    missing: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [alias.name.split(".")[0] for alias in node.names]
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            names = [node.module.split(".")[0]]
+        else:
+            continue
+        for name in names:
+            if name in stdlib or name in missing:
+                continue
+            if importlib.util.find_spec(name) is None:
+                missing.append(name)
+    return missing
 
 
 def run_runtime(path: Path, report: Report) -> None:
@@ -723,6 +799,22 @@ def run_runtime(path: Path, report: Report) -> None:
     matplotlib.use("Agg", force=True)
     import matplotlib.pyplot as plt
     from matplotlib.figure import Figure
+
+    missing = _missing_imports(path)
+    if missing:
+        declared = _declared_dependencies(path)
+        hint = f"uv run --with {' --with '.join(missing)} <this script>"
+        report.add(
+            "L2",
+            "harness-deps",
+            "error",
+            f"the runtime layer cannot import {', '.join(missing)} — the target script needs them",
+            str(path),
+            f"re-run with the dependencies available ({hint}), or use --static for this script",
+        )
+        report.facts["missing_imports"] = missing
+        report.facts["declared_dependencies"] = declared
+        return
 
     captured: list[tuple[str, Any]] = []
     original_savefig = Figure.savefig

@@ -30,3 +30,8 @@ figs/
 .DS_Store
 .idea/
 .vscode/
+
+# Composite gallery: data and renders are regenerable
+scientific-figure/examples/composite-gallery/data/
+scientific-figure/examples/composite-gallery/*.png
+scientific-figure/examples/composite-gallery/*.pdf

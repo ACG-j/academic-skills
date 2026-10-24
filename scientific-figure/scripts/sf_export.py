@@ -294,12 +294,51 @@ def discover(outdir: Path) -> list[Path]:
     return sorted(p for p in outdir.rglob("*") if p.is_file() and p.suffix.lower() in SUPPORTED)
 
 
+def missing_imports(script: Path) -> list[str]:
+    """Third-party modules the script imports that this interpreter cannot import.
+
+    sf_export runs the plotting script in-process, so the script's own dependencies must
+    already be importable. Naming the missing module is far more useful than surfacing a
+    ModuleNotFoundError traceback from inside the user's code.
+    """
+    import ast
+    import importlib.util
+
+    try:
+        tree = ast.parse(script.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return []
+    stdlib = set(sys.stdlib_module_names) if hasattr(sys, "stdlib_module_names") else set()
+    missing: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [alias.name.split(".")[0] for alias in node.names]
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            names = [node.module.split(".")[0]]
+        else:
+            continue
+        for name in names:
+            if name in stdlib or name in missing:
+                continue
+            if importlib.util.find_spec(name) is None:
+                missing.append(name)
+    return missing
+
+
 def run_script(script: Path) -> dict[str, Any]:
     """Execute the plotting script in its own directory, capturing its chatter.
 
     The script prints things like "saved fig1.*". That would interleave with this tool's
     JSON on stdout, so the child's stdout is redirected to stderr while it runs.
     """
+    absent = missing_imports(script)
+    if absent:
+        return {
+            "ok": False,
+            "error": f"cannot import {', '.join(absent)}",
+            "missing_imports": absent,
+            "fix": f"uv run --with {' --with '.join(absent)} <this script>",
+        }
     cwd = script.parent
     previous = Path.cwd()
     real_stdout = sys.stdout

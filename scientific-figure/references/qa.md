@@ -203,3 +203,43 @@ Answer them explicitly before delivery.
 
 A figure that clears every mechanical check and fails question 1 is still not done. The
 mechanical layer buys "nothing to attack"; only these four buy "a reader stops on the page".
+
+---
+
+## Composite figures: what replication practice taught
+
+Replicating four published composite figures (SHAP beeswarm, correlation heatmap with a
+companion bar panel, bubble matrix + scatter matrix, regression mosaic with marginals)
+surfaced defects that the checklist above catches only if the reviewer knows to look.
+
+**Subplot spacing is the dominant defect class.** A multi-panel figure fails first at its
+seams: one panel's y tick labels run into its neighbour's x tick labels. `sf_lint.py`
+reports these with the two axes indices (`axes 0 vs 2`), which is the difference between a
+finding you can act on and one you cannot. Fixes, in order of preference:
+
+1. Remove the tick labels that carry no information (a marginal histogram needs no y scale)
+2. Reduce the tick count to what the panel width supports — three per axis is often right
+3. Increase `wspace`/`hspace` for that subgridspec
+4. Enlarge the canvas, if the content genuinely needs the room
+
+**A label touching a neighbour is not the same as a label touching its own axis.** Two
+x-tick labels of one axis abutting is normal. An x-tick label and a y-tick label meeting at
+the origin is how axes are drawn. The lint now distinguishes these by role rather than by
+string, which removed a class of false positives while keeping the real seam defects.
+
+**Hand-placed axes overlap by construction.** `fig.add_axes([x, y, w, h])` for a colourbar
+puts it wherever the fractions say, with no knowledge of the gridspec. Every time it was
+used in the replication, it landed on a panel. Give the colourbar its own gridspec column.
+
+**Dense matrix labels set the canvas size.** A 15×15 annotated matrix at 180 mm gives ~9 mm
+cells, which cannot hold 6 pt text. Either the canvas grows or the annotations go; shrinking
+the font below the 6 pt floor is not an option.
+
+**What the lint still cannot see.** Two things, both of which needed the visual pass:
+
+- *Semantic placement.* A rotated label may sit closer to its neighbour's row than to its
+  own, so the reader cannot tell which trait a mark belongs to. Zero collisions, wrong
+  meaning. Row/column-aligned axes fixed it; no automated check would have flagged it.
+- *Over-correction.* After a fix the spacing can become so generous that the figure reads
+  as disconnected — a colourbar floating far from the series it belongs to. Only looking at
+  the whole figure catches this.

@@ -160,3 +160,29 @@ disappears below it."
 
 That sequence — claim, encoding, hero, annotation, uncertainty, style, review — is the
 whole design stage.
+
+---
+
+## Composite-figure archetypes
+
+Four layouts recur in published work and are worth knowing by name, because each has a
+characteristic failure that is easy to reproduce.
+
+| Archetype | Structure | Characteristic failure |
+|---|---|---|
+| **Beeswarm + effect grid** | one wide beeswarm panel; a grid of small effect panels beside it | the beeswarm's colourbar is hand-placed and lands on the grid; narrow effect panels cannot hold their own tick labels |
+| **Matrix + companion bars** | an annotated square matrix; a bar panel sharing its row order | cell annotations below 6 pt; the bar panel's axis collides with the matrix's ticks |
+| **Bubble matrix + scatter matrix** | a triangular correlation encoding; a lower-triangle scatter matrix | diamond-lattice labels drift away from their rows; diagonal name boxes too narrow for long trait names |
+| **Regression mosaic** | per-model blocks of scatter + marginals + residuals | marginals flush against the main panel, so tick labels collide at every seam |
+
+Shared rules that emerged:
+
+- **Marginals need no scale.** A histogram attached to a main panel is read by shape, not by
+  value. Removing its tick labels buys the seam spacing that was the actual problem.
+- **Give companion axes their own gridspec column.** Never `fig.add_axes()` for a colourbar in
+  a composed figure.
+- **The canvas size is set by the densest element.** For an annotated matrix that is the cell
+  text; for a mosaic it is the label rows. Size for that element first, then distribute.
+- **Prefer row/column alignment over rotated diagonal lattices** when the figure must be read
+  precisely. A diamond layout looks elegant and makes label-to-mark association ambiguous at
+  small sizes.

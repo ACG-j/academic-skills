@@ -51,3 +51,18 @@ sf_sheet.py       → many figures on one page
 
 The scripts have known-bad fixtures in `../evals/negative-cases/`. See
 `../evals/README.md`.
+
+## Dependencies and the runtime layer
+
+`sf_lint.py --run` and `sf_export.py --script` execute the target script **in their own
+process**, so the script's third-party imports must already be importable. Their PEP 723
+headers cover the common case (`matplotlib`, `numpy`, `pillow`), but a script that imports
+`pandas`, `seaborn`, `scipy`, or anything else needs those added:
+
+```bash
+uv run --with pandas --with scipy <script> ...
+```
+
+Both tools pre-flight the target's imports and report the exact missing module with that
+command, instead of surfacing a `ModuleNotFoundError` traceback from inside user code.
+`--static` never executes anything, so it always works.
