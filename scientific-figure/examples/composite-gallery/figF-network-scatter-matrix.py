@@ -73,28 +73,23 @@ left, bottom, width, height = 0.055, 0.05, 0.56, 0.62
 cell_w = width / k
 cell_h = height / k
 
+# Only the lower triangle and the diagonal get axes. The upper triangle is left as
+# blank paper for the network: no cells to draw, no borders to terminate.
 axes = {}
 for i in range(k):
-    for j in range(k):
+    for j in range(i + 1):
         x0 = left + j * cell_w
         y0 = bottom + (k - 1 - i) * cell_h
         axes[(i, j)] = fig.add_axes([x0, y0, cell_w * 0.93, cell_h * 0.93])
 
 for i in range(k):
-    for j in range(k):
+    for j in range(i + 1):
         ax = axes[(i, j)]
         if i == j:
             ax.set_xticks([]); ax.set_yticks([])
             _full_frame(ax)
             ax.text(0.5, 0.5, traits[i].replace("_", "\n"), ha="center", va="center",
                     fontsize=6.2, transform=ax.transAxes, linespacing=0.90)
-            continue
-        if i < j:
-            # Reserved for the network. Keep the frame and drop only the ticks: a cell
-            # switched off with axis("off") leaves its neighbours' borders stopping
-            # mid-air at every seam.
-            ax.set_xticks([]); ax.set_yticks([])
-            _full_frame(ax)
             continue
         xv = df[traits[j]].to_numpy()
         yv = df[traits[i]].to_numpy()
@@ -114,8 +109,8 @@ for i in range(k):
 # Nodes sit on the TOP-LEFT corner of each diagonal cell, so they descend in a
 # staircase across the matrix. On a flat line the arcs collapse into a braid; on the
 # staircase they span the upper triangle and read as a network.
-net = fig.add_axes([left, bottom, width * 1.10, height * 1.34], frameon=False)
-net.set_xlim(0, width * 1.10); net.set_ylim(0, height * 1.34)
+net = fig.add_axes([left, bottom, width * 1.10, height * 1.40], frameon=False)
+net.set_xlim(0, width * 1.10); net.set_ylim(0, height * 1.40)
 net.set_xticks([]); net.set_yticks([])
 
 node_x: dict[str, float] = {}
@@ -131,9 +126,14 @@ for idx, name in enumerate(traits):
     # Label above and to the right of the node, clear of both the node and the cell text.
     # Label up and to the LEFT of the node. The arcs leave each node heading right and
     # down, so the upper-left quadrant is the only one they cannot cross.
-    net.text(node_x[name] - 0.012, node_y[name] + 0.012, name,
-             ha="right", va="bottom", fontsize=6.6, style="italic",
-             clip_on=False, zorder=7)
+    # Arcs bulge in every direction near a node, so the label carries its own
+    # background instead of hunting for an empty quadrant.
+    # Dense networks cannot keep labels clear of every arc, so each label carries an
+    # opaque background. That is the standard solution, and the lint accepts it.
+    net.text(node_x[name], node_y[name] + 0.022, name,
+             ha="center", va="bottom", fontsize=6.6, style="italic",
+             clip_on=False, zorder=8,
+             bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.15})
 
 for a in range(k):
     for b in range(a + 1, k):

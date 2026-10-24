@@ -75,6 +75,8 @@ OVERLAP_FRAC = 0.08
 TICK_OVERLAP_FRAC = 0.12
 # Largest gutter between two matrix cells that still counts as a shared seam.
 SEAM_GAP = 0.04
+# Below this gap (display px) a label reads as touching the line beside it.
+MIN_TEXT_CLEARANCE_PX = 6.0
 # Share of a text box's area that may be crossed by a plotted line before the label
 # counts as sitting on top of the data.
 TEXT_OVER_LINE_FRAC = 0.10
@@ -590,6 +592,23 @@ def _line_segments(ax: Any) -> list[tuple[float, float, float, float]]:
             x0, y0 = float(vertices[index][0]), float(vertices[index][1])
             x1, y1 = float(vertices[index + 1][0]), float(vertices[index + 1][1])
             segments.append((x0, y0, x1, y1))
+    # Spines are drawn lines too. A label hanging over the frame of a neighbouring
+    # cell is crossed by a line exactly like a label sitting on a curve, and in a
+    # matrix layout that is the common case.
+    for spine in ax.spines.values():
+        try:
+            if not spine.get_visible():
+                continue
+            path = spine.get_path()
+            if path is None:
+                continue
+            vertices = spine.get_transform().transform(path.vertices)
+        except Exception:
+            continue
+        for index in range(len(vertices) - 1):
+            x0, y0 = float(vertices[index][0]), float(vertices[index][1])
+            x1, y1 = float(vertices[index + 1][0]), float(vertices[index + 1][1])
+            segments.append((x0, y0, x1, y1))
     return segments
 
 
@@ -612,6 +631,19 @@ def _segment_crosses_box(
         if bx0 <= x <= bx1 and by0 <= y <= by1:
             inside += 1
     return inside
+
+
+    if worst is not None:
+        gap, content = worst
+        report.add(
+            "L2",
+            "text-near-line",
+            "info",
+            f"annotation '{_short(content)}' sits {gap:.1f} px from a line — "
+            "the gap closes at print size",
+            label,
+            "give the label more room, or add a white bbox behind it",
+        )
 
 
 def _check_matrix_seams(fig: Any, label: str, report: Report) -> None:
@@ -661,25 +693,66 @@ def _check_matrix_seams(fig: Any, label: str, report: Report) -> None:
         )
 
 
+def _has_opaque_background(text: Any) -> bool:
+    """Whether a text carries a background patch that hides what is behind it."""
+    try:
+        bbox = text.get_bbox_patch()
+    except Exception:
+        return False
+    if bbox is None:
+        return False
+    try:
+        if not bbox.get_visible():
+            return False
+        face = bbox.get_facecolor()
+        # An RGBA face with meaningful alpha and a non-'none' colour hides the line.
+        return bool(face) and float(face[3]) >= 0.6
+    except Exception:
+        return False
+
+
+def _closest_gap(
+    segments: list[tuple[float, float, float, float]],
+    box: tuple[float, float, float, float],
+    samples: int = 24,
+) -> float | None:
+    """Shortest distance from a segment to a box, in display pixels."""
+    bx0, by0, bx1, by1 = box
+    best: float | None = None
+    for x0, y0, x1, y1 in segments:
+        window = MIN_TEXT_CLEARANCE_PX * 2
+        if (
+            max(x0, x1) < bx0 - window
+            or min(x0, x1) > bx1 + window
+            or max(y0, y1) < by0 - window
+            or min(y0, y1) > by1 + window
+        ):
+            continue
+        for step in range(samples + 1):
+            t = step / samples
+            px = x0 + (x1 - x0) * t
+            py = y0 + (y1 - y0) * t
+            dx = max(bx0 - px, 0.0, px - bx1)
+            dy = max(by0 - py, 0.0, py - by1)
+            distance = (dx * dx + dy * dy) ** 0.5
+            if best is None or distance < best:
+                best = distance
+    return best
+
+
 def _check_text_over_line(fig: Any, label: str, report: Report) -> None:
-    """Report annotations that sit on top of a plotted line.
+    """Report annotations that sit on, or too close to, a plotted line.
 
     A label crossed by the very curve it annotates is unreadable, and the collision
     check cannot see it: the text overlaps a *line*, not another text. This is what
     makes a network overlay's node labels run through the arcs.
+
+    A label 3 px from a border is not crossed, but at print size the gap disappears and
+    it reads as touching. That case is reported separately, at info level.
     """
     renderer = fig.canvas.get_renderer()
-    # Both the text boxes and the line segments must live in the same pixel space.
-    # fig.dpi and the canvas dpi can differ (a figure drawn at 150 dpi and saved at 300
-    # is the common case), so the ratio is applied to the text box.
-    ratio = 1.0
-    try:
-        if fig.dpi:
-            ratio = float(fig.canvas.get_renderer().points_to_pixels(1)) / float(
-                fig.dpi / 72.0
-            )
-    except Exception:
-        ratio = 1.0
+    worst_gap: tuple[float, str] | None = None
+
     for ax in fig.axes:
         segments = _line_segments(ax)
         if not segments:
@@ -693,9 +766,14 @@ def _check_text_over_line(fig: Any, label: str, report: Report) -> None:
             box = _bbox(text, renderer)
             if box is None:
                 continue
+
+            # A label drawn with an opaque background is legible even where a line
+            # passes behind it; that is the standard solution for network diagrams and
+            # the label is not a defect. Only bare text is reported.
+            if _has_opaque_background(text):
+                continue
+
             crossings = sum(_segment_crosses_box(segment, box) for segment in segments)
-            # 24 samples per segment, so a crossing line contributes a handful; a label
-            # merely near a line contributes none.
             if crossings >= 3:
                 report.add(
                     "L2",
@@ -703,9 +781,26 @@ def _check_text_over_line(fig: Any, label: str, report: Report) -> None:
                     "warn",
                     f"annotation '{_short(content)}' is crossed by a plotted line",
                     label,
-                    "move the label clear of the line, or add a white bbox behind it",
+                    "move the label clear, or give it a white bbox "
+                    '(bbox={"facecolor": "white", "edgecolor": "none"})',
                 )
-                break
+                continue
+
+            gap = _closest_gap(segments, box)
+            if gap is not None and gap < MIN_TEXT_CLEARANCE_PX:
+                if worst_gap is None or gap < worst_gap[0]:
+                    worst_gap = (gap, content)
+
+    if worst_gap is not None:
+        gap, content = worst_gap
+        report.add(
+            "L2",
+            "text-near-line",
+            "info",
+            f"annotation '{_short(content)}' sits {gap:.1f} px from a line — the gap closes at print size",
+            label,
+            "give the label more room, or add a white bbox behind it",
+        )
 
 
 def _check_literal_escapes(fig: Any, label: str, report: Report) -> None:
@@ -917,6 +1012,7 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
                 )
 
     # --- empty or data-less axes ---
+    overlay_present = any(_is_transparent_overlay(candidate) for candidate in fig.axes)
     for ax, _ in axes_boxes:
         if ax.get_label() == "<colorbar>":
             continue
@@ -938,7 +1034,9 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
                 for tick in axis.get_major_ticks()
             )
         )
-        if not has_data and not has_text and drawn and not ticks_cleared:
+        # An empty framed cell is only legitimate when something is drawn over it.
+        # Without an overlay axes covering it, it is a panel nobody filled.
+        if not has_data and not has_text and drawn and not (ticks_cleared and overlay_present):
             report.add("L2", "empty-axes", "warn", "an axes has no plotted data", label, "remove the empty panel")
 
     # --- aspect and canvas facts ---

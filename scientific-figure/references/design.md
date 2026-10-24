@@ -247,6 +247,11 @@ def full_frame(ax):
         ax.spines[side].set_linewidth(0.6)
 ```
 
-Apply it to **every** cell in the block — scatters, diagonal labels, and cells reserved for
-an overlay. A reserved cell keeps its frame and clears only its ticks; switching it off with
-`ax.axis("off")` deletes the cell and leaves its neighbours' borders ending in mid-air.
+**Do not create axes for cells you are not using.** The simplest correct answer for a
+triangle is to build axes only for the cells that hold something: `for j in range(i + 1)`.
+Every drawn cell then carries all four of its own spines, so the block is a closed grid and
+there is no seam for a border to end against.
+
+The alternatives are worse. `ax.axis("off")` deletes the cell, leaving neighbours' borders
+terminating in mid-air. Keeping the cell framed but empty works only if something is drawn
+over it — otherwise it reads as a panel nobody filled, and the lint says so.

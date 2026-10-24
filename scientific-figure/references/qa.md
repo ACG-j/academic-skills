@@ -317,3 +317,25 @@ than a forgotten panel.
 The third case is the one worth generalising: **a style preset tuned for single plots can
 be actively wrong for a composed layout.** Removing top and right spines is a good default
 for a line chart and a defect for a table. When a layout is a grid, the grid has to win.
+
+---
+
+## Labels in a dense network: give them a background
+
+On a network overlay, a node label cannot be kept clear of every arc. The arcs leave each
+node in all directions, and the long ones cross the whole figure. Every quadrant was tried:
+up-left collided with the previous node's label, up-right and directly above ran through
+arcs, and flipping the arc bulge downward only moved the problem.
+
+The answer is not to hunt for empty space. **Give the label an opaque background:**
+
+```python
+ax.text(x, y, name, bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.15})
+```
+
+The lint now accepts this: a label with an opaque bbox is legible wherever it sits, so
+`text-over-line` skips it and only reports bare text. Reporting every label on a network
+would make the check useless by firing on the correct solution.
+
+The companion check, `text-near-line`, still reports the tightest gap in the figure at info
+level — useful when a label is 2 px from a border and reads as touching it at print size.
