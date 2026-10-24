@@ -268,3 +268,52 @@ Three fixes, all of which matter more than any individual check:
 The general lesson: after changing how text or axes are collected, **prove the checks still
 fire** by injecting a known defect. A refactor that breaks the walk looks exactly like a
 figure with nothing wrong with it.
+
+---
+
+## Three defects the checklist had no entry for
+
+Replicating the network-overlay figure produced three defects that the review protocol
+could not name, because no check looked for them. Each is now a check.
+
+### 1. A LaTeX escape rendered literally
+
+`leg.text(..., "Leaf\\_type")` outside mathtext draws the backslash: the reader sees
+`Leaf\_type`. This is the most common copy-paste defect when a label moves from LaTeX into
+matplotlib, and the source looks exactly like a correct mathtext escape — static analysis
+cannot tell them apart, because only the rendered figure knows whether a `$...$` context was
+open.
+
+**Check: `literal-escape` (L2, error).** Any text still containing a backslash after
+removing `$...$` spans is drawn wrong.
+
+### 2. An annotation crossed by the line it annotates
+
+The collision check compares text against text. A node label sitting under the very arcs
+that leave its node overlaps *a line*, so nothing fired. The label was unreadable and the
+lint was silent.
+
+**Check: `text-over-line` (L2, warn).** Line segments and curved patch paths are sampled
+against each annotation's bounding box; a label crossed by a plotted path is reported. The
+fix is to move the label into a quadrant the geometry cannot enter — for a network whose
+arcs leave right and down, that is up-left.
+
+### 3. A matrix whose borders stop mid-air
+
+This one had two layers, and the first fix was wrong:
+
+- Cells reserved for an overlay were switched off with `ax.axis("off")`. That removes the
+  whole cell, so every drawn neighbour's border terminated against nothing. **Fix:** keep
+  the cell, clear only its ticks.
+- With that done the grid was still broken: the base style sets `axes.spines.top: false`
+  and `axes.spines.right: false`. Correct for a normal plot, wrong for a matrix — every
+  cell showed only its left and bottom edges, so the table read as disconnected corner
+  brackets. **Fix:** restore all four spines on every cell in a matrix block.
+
+**Checks: `open-seam` (L2, warn)** for a framed cell meeting an undrawn neighbour, and the
+`empty-axes` rule now recognises a framed cell with cleared ticks as a reserved cell rather
+than a forgotten panel.
+
+The third case is the one worth generalising: **a style preset tuned for single plots can
+be actively wrong for a composed layout.** Removing top and right spines is a good default
+for a line chart and a defect for a table. When a layout is a grid, the grid has to win.

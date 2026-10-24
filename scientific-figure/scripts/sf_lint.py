@@ -73,6 +73,14 @@ MIN_FONT_PT = 6.0
 MAX_FONT_PT = 14.0
 OVERLAP_FRAC = 0.08
 TICK_OVERLAP_FRAC = 0.12
+# Largest gutter between two matrix cells that still counts as a shared seam.
+SEAM_GAP = 0.04
+# Share of a text box's area that may be crossed by a plotted line before the label
+# counts as sitting on top of the data.
+TEXT_OVER_LINE_FRAC = 0.10
+# LaTeX escapes that only render correctly inside mathtext. Outside it, matplotlib
+# prints the backslash literally.
+LATEX_ESCAPES = ("\\_", "\\%", "\\&", "\\#", "\\$", "\\{", "\\}")
 MIN_REVIEW_PX = 800
 
 
@@ -544,11 +552,200 @@ def _data_points(ax: Any) -> list[tuple[float, float]]:
     return points
 
 
+def _line_segments(ax: Any) -> list[tuple[float, float, float, float]]:
+    """Every plotted line segment in display coordinates.
+
+    Sampling the data points is enough for "does a legend cover a marker", but a label
+    sitting on a curve is crossed *between* samples, so the segments themselves are
+    what the text-over-line check needs.
+    """
+    segments: list[tuple[float, float, float, float]] = []
+    for line in ax.get_lines():
+        data = line.get_xydata()
+        if data is None or len(data) < 2:
+            continue
+        try:
+            display = ax.transData.transform(data)
+        except Exception:
+            continue
+        for index in range(len(display) - 1):
+            x0, y0 = float(display[index][0]), float(display[index][1])
+            x1, y1 = float(display[index + 1][0]), float(display[index + 1][1])
+            segments.append((x0, y0, x1, y1))
+        if len(segments) > 3000:
+            break
+    for patch in ax.patches:
+        # Curved edges (network overlays, FancyArrowPatch) are drawn as paths; sampling
+        # their vertices is enough to detect a label sitting on them.
+        try:
+            path = patch.get_path()
+            transform = patch.get_transform()
+        except Exception:
+            continue
+        try:
+            vertices = transform.transform(path.vertices)
+        except Exception:
+            continue
+        for index in range(len(vertices) - 1):
+            x0, y0 = float(vertices[index][0]), float(vertices[index][1])
+            x1, y1 = float(vertices[index + 1][0]), float(vertices[index + 1][1])
+            segments.append((x0, y0, x1, y1))
+    return segments
+
+
+def _segment_crosses_box(
+    segment: tuple[float, float, float, float],
+    box: tuple[float, float, float, float],
+    samples: int = 24,
+) -> int:
+    """Count how many sample points of the segment fall inside the box."""
+    x0, y0, x1, y1 = segment
+    bx0, by0, bx1, by1 = box
+    # Cheap rejection: the segment's own bounds cannot reach the box.
+    if max(x0, x1) < bx0 or min(x0, x1) > bx1 or max(y0, y1) < by0 or min(y0, y1) > by1:
+        return 0
+    inside = 0
+    for step in range(samples + 1):
+        t = step / samples
+        x = x0 + (x1 - x0) * t
+        y = y0 + (y1 - y0) * t
+        if bx0 <= x <= bx1 and by0 <= y <= by1:
+            inside += 1
+    return inside
+
+
+def _check_matrix_seams(fig: Any, label: str, report: Report) -> None:
+    """Report a grid of cells where drawn and undrawn neighbours meet.
+
+    A matrix layout often leaves the upper triangle as ``ax.axis("off")`` cells. If the
+    drawn cells keep their frames, every seam against an undrawn neighbour terminates in
+    mid-air: the reader sees a border that stops halfway and a corner that does not
+    close. Either every cell in the block is drawn, or none is.
+    """
+    cells: list[tuple[int, Any, Any]] = []
+    for index, ax in enumerate(fig.axes):
+        if not ax.get_frame_on():
+            continue
+        try:
+            cells.append((index, ax, ax.get_position()))
+        except Exception:
+            continue
+    if len(cells) < 4:
+        return
+
+    drawn = [c for c in cells if c[1].axison]
+    undrawn = [c for c in cells if not c[1].axison]
+    if not drawn or not undrawn:
+        return
+
+    # A seam exists when two cell boxes touch (within a few pixels) and their facing
+    # edges overlap substantially.
+    touching = 0
+    for _, _axa, ba in drawn:
+        for _, _axb, bb in undrawn:
+            horizontal = abs(ba.x1 - bb.x0) <= SEAM_GAP or abs(bb.x1 - ba.x0) <= SEAM_GAP
+            vertical = abs(ba.y1 - bb.y0) <= SEAM_GAP or abs(bb.y1 - ba.y0) <= SEAM_GAP
+            overlap_y = min(ba.y1, bb.y1) - max(ba.y0, bb.y0)
+            overlap_x = min(ba.x1, bb.x1) - max(ba.x0, bb.x0)
+            if (horizontal and overlap_y > 0.02) or (vertical and overlap_x > 0.02):
+                touching += 1
+    if touching:
+        report.add(
+            "L2",
+            "open-seam",
+            "warn",
+            f"{touching} seam(s) where a framed cell meets an undrawn neighbour — borders stop mid-air",
+            label,
+            'draw every cell in the block (leave the reserved ones empty but framed), '
+            'or drop the frames entirely',
+        )
+
+
+def _check_text_over_line(fig: Any, label: str, report: Report) -> None:
+    """Report annotations that sit on top of a plotted line.
+
+    A label crossed by the very curve it annotates is unreadable, and the collision
+    check cannot see it: the text overlaps a *line*, not another text. This is what
+    makes a network overlay's node labels run through the arcs.
+    """
+    renderer = fig.canvas.get_renderer()
+    # Both the text boxes and the line segments must live in the same pixel space.
+    # fig.dpi and the canvas dpi can differ (a figure drawn at 150 dpi and saved at 300
+    # is the common case), so the ratio is applied to the text box.
+    ratio = 1.0
+    try:
+        if fig.dpi:
+            ratio = float(fig.canvas.get_renderer().points_to_pixels(1)) / float(
+                fig.dpi / 72.0
+            )
+    except Exception:
+        ratio = 1.0
+    for ax in fig.axes:
+        segments = _line_segments(ax)
+        if not segments:
+            continue
+        for text, owner, role in _collect_texts(fig):
+            if owner is not ax or role not in ("annotation", "figure-text"):
+                continue
+            content = text.get_text().strip()
+            if not content:
+                continue
+            box = _bbox(text, renderer)
+            if box is None:
+                continue
+            crossings = sum(_segment_crosses_box(segment, box) for segment in segments)
+            # 24 samples per segment, so a crossing line contributes a handful; a label
+            # merely near a line contributes none.
+            if crossings >= 3:
+                report.add(
+                    "L2",
+                    "text-over-line",
+                    "warn",
+                    f"annotation '{_short(content)}' is crossed by a plotted line",
+                    label,
+                    "move the label clear of the line, or add a white bbox behind it",
+                )
+                break
+
+
+def _check_literal_escapes(fig: Any, label: str, report: Report) -> None:
+    r"""Report text that will print a backslash literally.
+
+    A label such as ``Leaf\_type`` written outside mathtext renders with the backslash
+    drawn: the reader sees ``Leaf\_type``. It is the most common copy-paste defect when
+    moving a label from LaTeX into matplotlib, and static analysis cannot see it — the
+    source looks exactly like a correct mathtext escape.
+    """
+    offenders: list[str] = []
+    for text, _ax, _role in _collect_texts(fig):
+        content = text.get_text()
+        if "\\" not in content:
+            continue
+        # A mathtext span ($...$) legitimately uses backslash commands.
+        stripped = re.sub(r"\$[^$]*\$", "", content)
+        if "\\" in stripped:
+            offenders.append(content)
+    if offenders:
+        sample = ", ".join(repr(item)[:32] for item in offenders[:3])
+        report.add(
+            "L2",
+            "literal-escape",
+            "error",
+            f"{len(offenders)} label(s) render a backslash literally: {sample}",
+            label,
+            "drop the escape (use 'Leaf_type'), or wrap the label in $...$ for mathtext",
+        )
+
+
 def inspect_figure(fig: Any, label: str, report: Report) -> None:
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     fig_box = fig.bbox
     axes_boxes = [(ax, ax.get_window_extent(renderer)) for ax in fig.axes]
+
+    _check_literal_escapes(fig, label, report)
+    _check_text_over_line(fig, label, report)
+    _check_matrix_seams(fig, label, report)
 
     # --- tiny and oversized fonts ---
     too_small: dict[float, int] = {}
@@ -730,7 +927,18 @@ def inspect_figure(fig: Any, label: str, report: Report) -> None:
         # ax.axison is False when the axes was switched off with ax.axis("off") — an
         # upper-triangle cell reserved for an overlay, not a forgotten panel.
         drawn = getattr(ax, "axison", True) and ax.get_frame_on()
-        if not has_data and not has_text and drawn:
+        # A reserved cell in a matrix layout keeps its frame but has had its ticks
+        # cleared; a forgotten panel still shows the default ticks.
+        ticks_cleared = (
+            len(ax.get_xticks()) == 0
+            and len(ax.get_yticks()) == 0
+            and not any(
+                tick.label1.get_text().strip()
+                for axis in (ax.xaxis, ax.yaxis)
+                for tick in axis.get_major_ticks()
+            )
+        )
+        if not has_data and not has_text and drawn and not ticks_cleared:
             report.add("L2", "empty-axes", "warn", "an axes has no plotted data", label, "remove the empty panel")
 
     # --- aspect and canvas facts ---

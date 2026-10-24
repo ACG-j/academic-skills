@@ -233,3 +233,20 @@ Four placement rules decide whether it reads. All four were wrong on the first a
 
 Keep the network on its own frameless axes so it can overlap the matrix without fighting it
 for layout.
+
+### Matrix layouts fight the style preset
+
+`base.mplstyle` sets `axes.spines.top: false` and `axes.spines.right: false`. That is the
+right default for a line chart and wrong for any grid of cells: with two spines missing,
+each cell shows an L-shaped fragment and the table reads as disconnected brackets.
+
+```python
+def full_frame(ax):
+    for side in ("top", "right", "bottom", "left"):
+        ax.spines[side].set_visible(True)
+        ax.spines[side].set_linewidth(0.6)
+```
+
+Apply it to **every** cell in the block — scatters, diagonal labels, and cells reserved for
+an overlay. A reserved cell keeps its frame and clears only its ticks; switching it off with
+`ax.axis("off")` deletes the cell and leaves its neighbours' borders ending in mid-air.

@@ -26,6 +26,9 @@ done
 | `case-05-truncated-bar` | bar chart with nonzero baseline | L1 `truncated-axis` warn |
 | `case-06-no-units` | labels without units | L1 `units` error |
 | `case-07-inline-data` | 26 values inline, no seed | L1 `inline-data` + `data-source` errors |
+| `case-08-literal-escape` | `Leaf\\_type` outside mathtext | L2 `literal-escape` error |
+| `case-09-text-over-line` | annotation centred on its own curve | L2 `text-over-line` warn |
+| `case-10-open-seam` | matrix cells switched off with `axis("off")` | L2 `open-seam` warn |
 
 A positive control matters as much: a correct figure must come back clean. Without it,
 "everything fails" would pass the suite.

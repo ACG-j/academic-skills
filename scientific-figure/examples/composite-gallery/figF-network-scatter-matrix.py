@@ -55,6 +55,18 @@ N = len(df)
 
 fig = plt.figure(figsize=(215 * MM, 145 * MM))
 
+def _full_frame(ax) -> None:
+    """Restore all four spines on a matrix cell.
+
+    The base style drops the top and right spines, which is correct for a normal plot
+    and wrong for a matrix: without them the grid reads as disconnected corner
+    brackets instead of a table.
+    """
+    for side in ("top", "right", "bottom", "left"):
+        ax.spines[side].set_visible(True)
+        ax.spines[side].set_linewidth(0.6)
+
+
 # Grid: k x k. Diagonal cells hold the trait names, the lower triangle holds the
 # scatters, and the upper triangle is left empty for the network.
 left, bottom, width, height = 0.055, 0.05, 0.56, 0.62
@@ -73,11 +85,16 @@ for i in range(k):
         ax = axes[(i, j)]
         if i == j:
             ax.set_xticks([]); ax.set_yticks([])
+            _full_frame(ax)
             ax.text(0.5, 0.5, traits[i].replace("_", "\n"), ha="center", va="center",
                     fontsize=6.2, transform=ax.transAxes, linespacing=0.90)
             continue
         if i < j:
-            ax.axis("off")          # reserved for the network
+            # Reserved for the network. Keep the frame and drop only the ticks: a cell
+            # switched off with axis("off") leaves its neighbours' borders stopping
+            # mid-air at every seam.
+            ax.set_xticks([]); ax.set_yticks([])
+            _full_frame(ax)
             continue
         xv = df[traits[j]].to_numpy()
         yv = df[traits[i]].to_numpy()
@@ -91,6 +108,7 @@ for i in range(k):
             xs = np.array([xv.min(), xv.max()])
             ax.plot(xs, a + b * xs, color="#2B2B2B", linewidth=0.6, zorder=5)
         ax.set_xticks([]); ax.set_yticks([])
+        _full_frame(ax)
 
 # --- network over the upper triangle -------------------------------------
 # Nodes sit on the TOP-LEFT corner of each diagonal cell, so they descend in a
@@ -111,8 +129,10 @@ for idx, name in enumerate(traits):
 for idx, name in enumerate(traits):
     net.scatter(node_x[name], node_y[name], s=34, color="#8C8C8C", zorder=6, clip_on=False)
     # Label above and to the right of the node, clear of both the node and the cell text.
-    net.text(node_x[name] + 0.010, node_y[name] + 0.008, name,
-             ha="left", va="bottom", fontsize=6.6, style="italic",
+    # Label up and to the LEFT of the node. The arcs leave each node heading right and
+    # down, so the upper-left quadrant is the only one they cannot cross.
+    net.text(node_x[name] - 0.012, node_y[name] + 0.012, name,
+             ha="right", va="bottom", fontsize=6.6, style="italic",
              clip_on=False, zorder=7)
 
 for a in range(k):
@@ -152,7 +172,7 @@ for site, colour in SITE_COLOURS.items():
     y -= 0.038
 
 y -= 0.03
-leg.text(0.02, y, "Leaf\\_type", fontsize=8.5, fontweight="bold", va="top")
+leg.text(0.02, y, "Leaf type", fontsize=8.5, fontweight="bold", va="top")
 y -= 0.045
 for leaf, marker in MARKERS.items():
     leg.scatter(0.06, y, s=26, marker=marker, color="#1A1A1A")
