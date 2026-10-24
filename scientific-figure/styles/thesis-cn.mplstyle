@@ -1,0 +1,17 @@
+# 中文学位论文：A4 版心 150 mm 单栏，宋体，图注五号。
+figure.figsize: 5.906, 4.13
+font.size: 10.5
+axes.titlesize: 10.5
+axes.labelsize: 10.5
+xtick.labelsize: 9
+ytick.labelsize: 9
+legend.fontsize: 9
+figure.titlesize: 10.5
+font.family: serif
+font.serif: SimSun, Times New Roman, Noto Sans CJK SC, DejaVu Serif
+font.sans-serif: Noto Sans CJK SC, SimSun, Microsoft YaHei, DejaVu Sans
+axes.unicode_minus: false
+mathtext.fontset: stix
+lines.linewidth: 1.2
+lines.markersize: 3.8
+axes.linewidth: 0.8

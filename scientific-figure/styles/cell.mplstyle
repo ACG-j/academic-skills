@@ -1,0 +1,13 @@
+# Cell Press: 85 mm single column, 5-7 pt, Arial/Helvetica.
+figure.figsize: 3.346, 2.55
+font.size: 7
+axes.titlesize: 7
+axes.labelsize: 7
+xtick.labelsize: 6
+ytick.labelsize: 6
+legend.fontsize: 6
+figure.titlesize: 8
+font.sans-serif: Arial, Helvetica, Nimbus Sans, DejaVu Sans
+lines.linewidth: 0.9
+lines.markersize: 2.8
+axes.linewidth: 0.6

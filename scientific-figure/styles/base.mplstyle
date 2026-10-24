@@ -1,0 +1,104 @@
+# Base publication style for the scientific-figure skill.
+# Journal files layer on top of this one; apply both in order:
+#   plt.style.use([base, journal])
+# Every value here is a default, not a law: override per figure when the claim needs it.
+
+# --- canvas ---------------------------------------------------------------
+figure.dpi: 150
+savefig.dpi: 300
+figure.facecolor: white
+savefig.facecolor: white
+savefig.bbox: tight
+savefig.pad_inches: 0.02
+figure.autolayout: false
+
+# --- typography -----------------------------------------------------------
+font.family: sans-serif
+font.sans-serif: Arial, Helvetica, Nimbus Sans, DejaVu Sans
+font.size: 8
+axes.titlesize: 8
+axes.labelsize: 8
+xtick.labelsize: 7
+ytick.labelsize: 7
+legend.fontsize: 7
+figure.titlesize: 9
+# unicode_minus stays TRUE here: it renders U+2212, the real minus sign. Turning it
+# off substitutes a hyphen, which reads as a dash or a range. The Chinese styles
+# (journal-cn, thesis-cn) override it to false because many CJK fonts lack U+2212.
+axes.unicode_minus: true
+mathtext.fontset: stix
+mathtext.default: it
+
+# --- axes and spines ------------------------------------------------------
+axes.linewidth: 0.7
+axes.spines.top: false
+axes.spines.right: false
+axes.labelpad: 3.0
+axes.titlepad: 4.0
+axes.grid: false
+axes.axisbelow: true
+axes.edgecolor: 0.15
+axes.labelcolor: 0.15
+axes.titlecolor: 0.15
+
+# --- ticks ----------------------------------------------------------------
+xtick.direction: in
+ytick.direction: in
+xtick.major.size: 3.0
+ytick.major.size: 3.0
+xtick.major.width: 0.7
+ytick.major.width: 0.7
+xtick.minor.visible: true
+ytick.minor.visible: true
+xtick.minor.size: 1.5
+ytick.minor.size: 1.5
+xtick.minor.width: 0.5
+ytick.minor.width: 0.5
+xtick.color: 0.15
+ytick.color: 0.15
+xtick.labelcolor: 0.15
+ytick.labelcolor: 0.15
+
+# --- lines and markers ----------------------------------------------------
+lines.linewidth: 1.2
+lines.markersize: 3.5
+lines.markeredgewidth: 0.8
+lines.solid_capstyle: round
+patch.linewidth: 0.6
+errorbar.capsize: 2.0
+
+# --- legend ---------------------------------------------------------------
+legend.frameon: true
+legend.framealpha: 0.85
+legend.facecolor: white
+legend.edgecolor: 0.8
+legend.fancybox: false
+legend.borderpad: 0.3
+legend.handlelength: 1.6
+legend.handletextpad: 0.5
+legend.labelspacing: 0.3
+
+# --- grid ----------------------------------------------------------------
+grid.color: 0.85
+grid.linewidth: 0.5
+grid.alpha: 0.7
+grid.linestyle: -
+
+# --- images and colormaps -------------------------------------------------
+image.cmap: viridis
+image.interpolation: nearest
+image.aspect: auto
+
+# --- export --------------------------------------------------------------
+# svg.fonttype 'none' keeps text as text (editable in Illustrator/Inkscape).
+# pdf/ps fonttype 42 embeds TrueType subsets (journals ask for Type 42).
+svg.fonttype: none
+pdf.fonttype: 42
+ps.fonttype: 42
+pdf.compression: 6
+svg.hashsalt: scientific-figure
+
+# --- Wong colourblind-safe cycle -----------------------------------------
+# Order chosen so the first four survive deuteranopia and B&W printing;
+# the low-contrast yellow/sky-blue sit last on purpose.
+axes.prop_cycle: cycler('color', ['0072B2', 'D55E00', '009E73', 'CC79A7', 'E69F00', '56B4E9', 'F0E442', '000000'])

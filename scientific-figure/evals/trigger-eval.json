@@ -1,0 +1,23 @@
+[
+  {"query": "我在写一篇 Nature 子刊的论文，想把实验数据画成单栏图，要能直接投稿", "should_trigger": true},
+  {"query": "make a publication-ready figure from results.csv — it's going into an IEEE conference paper, needs to be 3.5 inch wide", "should_trigger": true},
+  {"query": "我的 matplotlib 图看起来像作业，帮我改成能放进论文的样子", "should_trigger": true},
+  {"query": "画一张模型框架图，技术路线那种，要能放在论文的方法部分", "should_trigger": true},
+  {"query": "export this figure to TikZ so the fonts match my LaTeX document", "should_trigger": true},
+  {"query": "这张图的图例挡住了数据，而且纵轴没有单位，帮我看看还有别的问题吗", "should_trigger": true},
+  {"query": "学位论文的图，宋体，要导出 PDF 和 SVG", "should_trigger": true},
+  {"query": "生成一个三线表，把最优值加粗，数字按小数点对齐", "should_trigger": true},
+  {"query": "check this figure for colorblind safety and whether it survives a black-and-white print", "should_trigger": true},
+  {"query": "我做了一张热图，颜色用了 jet，审稿人说不好，怎么改", "should_trigger": true},
+
+  {"query": "画个实时更新的监控面板，每两秒刷新一次", "should_trigger": false},
+  {"query": "做一个动画展示粒子运动轨迹", "should_trigger": false},
+  {"query": "把这张图从 pptx 第 6 页提取出来发给我", "should_trigger": false},
+  {"query": "给我画一个卡通吉祥物当项目 README 的头图", "should_trigger": false},
+  {"query": "在这张中国地图上标出各省份的销量", "should_trigger": false},
+  {"query": "把这张 PNG 转成 600 dpi 的高清版本", "should_trigger": false},
+  {"query": "viridis 和 RdBu 哪个更好看？随便问问", "should_trigger": false},
+  {"query": "用 pandas 算一下这个 csv 每列的平均值和标准差", "should_trigger": false},
+  {"query": "画个 UML 类图展示这几个类之间的继承关系", "should_trigger": false},
+  {"query": "帮我把这个 xlsx 里的图表数据整理成透视表", "should_trigger": false}
+]

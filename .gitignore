@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+uv.lock
+
+# Generated figure outputs — regenerable from the committed scripts
+scientific-figure/evals/negative-cases/case-*.png
+scientific-figure/evals/negative-cases/case-*.pdf
+scientific-figure/examples/**/qa/r*/
+scientific-figure/examples/**/qa/diff/
+
+# Local scratch
+out/
+qa/
+figs/
+*.pgf
+*.eps
+*.tiff
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/

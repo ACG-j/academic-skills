@@ -1,0 +1,13 @@
+# ACS: 3.33 in single column, 8 pt sans.
+figure.figsize: 3.33, 2.55
+font.size: 8
+axes.titlesize: 8
+axes.labelsize: 8
+xtick.labelsize: 7
+ytick.labelsize: 7
+legend.fontsize: 7
+figure.titlesize: 9
+font.sans-serif: Arial, Helvetica, Nimbus Sans, DejaVu Sans
+lines.linewidth: 1.0
+lines.markersize: 3.2
+axes.linewidth: 0.7

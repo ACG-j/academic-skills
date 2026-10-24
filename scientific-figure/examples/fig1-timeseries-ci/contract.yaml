@@ -1,0 +1,32 @@
+# Figure contract — write this BEFORE plotting.
+# The cover test: hide the caption, look at the figure. Is the claim still readable?
+# The drop test: delete each panel. If the claim survives, that panel is decoration.
+
+figure_id: fig1
+core_claim: "Sorted allocation beats proportional by 18% above 60% load."
+backend: matplotlib                # matplotlib | tikz | other
+
+panels:
+  - id: a
+    type: TODO                   # sorted_bar | line | scatter | heatmap | schematic | ...
+    defends: "TODO — the sub-claim this panel carries"
+
+hero_panel: a                    # the panel that carries the headline
+hierarchy:
+  overview: "TODO — where the eye should land first"
+  deviation: "TODO — the surprising or key signal"
+
+export: [pdf, svg, png]
+source_data: data/processed/input.csv
+stats_on_figure: "TODO — CI / error bars / N, or 'none, and here is why'"
+
+target:
+  venue: nature
+  column: single                 # single | 1.5 | double | full
+  width_mm: 89
+
+# Filled in during review:
+review:
+  rounds: 0
+  blocking_open: 0
+  accepted_warnings: []

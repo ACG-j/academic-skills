@@ -1,0 +1,41 @@
+# Figure contract — write this BEFORE plotting.
+#
+# Two tests it exists for:
+#   cover test: hide the caption, look at the figure. Is the claim still readable?
+#   drop test:  delete each panel. If the claim survives, that panel is decoration.
+
+figure_id: fig2_allocation
+core_claim: "Sorted allocation beats proportional by 18% once demand exceeds 60%."
+
+backend: matplotlib          # matplotlib | tikz | other
+target:
+  venue: nature              # see sf_style.py --list
+  column: single             # single | 1.5 | double | full
+  width_mm: 89
+  height_mm: 65
+
+panels:
+  - id: a
+    type: sorted_bar
+    defends: "ranking across the six strategies"
+    hero: true
+  - id: b
+    type: residual
+    defends: "the winner's advantage vanishes below 40% load"
+    hero: false
+
+hierarchy:
+  overview: "which strategy wins"
+  deviation: "where the advantage disappears"
+
+export: [pdf, svg, png]
+source_data: data/processed/allocation.csv
+stats_on_figure: "95% CI error bars; N=30 per bar"
+
+# --- filled in during review ---
+review:
+  rounds: 0
+  blocking_open: 0
+  accepted_warnings:
+    - finding: "dual axis on panel b"
+      reason: "demand and cost are physically linked; both axes colour-coded"

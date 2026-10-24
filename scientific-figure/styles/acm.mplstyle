@@ -1,0 +1,15 @@
+# ACM: 3.33 in single column, 9 pt, Libertine/Times.
+figure.figsize: 3.33, 2.55
+font.size: 9
+axes.titlesize: 9
+axes.labelsize: 9
+xtick.labelsize: 8
+ytick.labelsize: 8
+legend.fontsize: 8
+figure.titlesize: 9
+font.family: serif
+font.serif: Linux Libertine, Times New Roman, Nimbus Roman, DejaVu Serif
+mathtext.fontset: stix
+lines.linewidth: 1.0
+lines.markersize: 3.4
+axes.linewidth: 0.7

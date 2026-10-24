@@ -1,0 +1,17 @@
+# 中文期刊（通用双栏）：单栏 80 mm，宋体 + Times 数字。
+figure.figsize: 3.15, 2.40
+font.size: 9
+axes.titlesize: 9
+axes.labelsize: 9
+xtick.labelsize: 8
+ytick.labelsize: 8
+legend.fontsize: 8
+figure.titlesize: 10
+font.family: serif
+font.serif: SimSun, Times New Roman, Noto Sans CJK SC, DejaVu Serif
+font.sans-serif: Noto Sans CJK SC, SimSun, Microsoft YaHei, DejaVu Sans
+axes.unicode_minus: false
+mathtext.fontset: stix
+lines.linewidth: 1.0
+lines.markersize: 3.2
+axes.linewidth: 0.7

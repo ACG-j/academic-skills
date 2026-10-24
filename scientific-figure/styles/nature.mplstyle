@@ -1,0 +1,14 @@
+# Nature (flagship): 89 mm single column, 5-7 pt text, Arial/Helvetica.
+# Verify the live Nature figure guide before submission.
+figure.figsize: 3.504, 2.60
+font.size: 7
+axes.titlesize: 7
+axes.labelsize: 7
+xtick.labelsize: 6
+ytick.labelsize: 6
+legend.fontsize: 6
+figure.titlesize: 8
+font.sans-serif: Arial, Helvetica, Nimbus Sans, DejaVu Sans
+lines.linewidth: 1.0
+lines.markersize: 3.0
+axes.linewidth: 0.6

@@ -1,0 +1,23 @@
+[project]
+name = "academic-skills"
+version = "0.1.0"
+description = "Scientific figure skill for DSH agents: multi-style, multi-format, three-layer QA"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib>=3.8",
+    "numpy>=1.26",
+    "pillow>=10",
+]
+
+[project.optional-dependencies]
+data = ["pandas>=2.0"]
+science = ["scienceplots>=2.1"]
+tikz = ["matplot2tikz>=0.4"]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,0 +1,92 @@
+# Team plan for multi-figure work. Copy, fill in, and use it to create the task board.
+#
+# Read references/teams.md first. Default is NO team: one agent doing
+# contract -> implement -> review -> export is faster than coordinating three.
+# Use this when there are 3+ figures, or when independent review is the point.
+#
+# Write scopes must be disjoint. Two agents writing figs/fig2/ will clobber each
+# other and the filesystem will not stop them.
+
+figures:
+  - id: fig2
+    contract: contracts/fig2.yaml
+    claim: "Sorted allocation wins above 60% load"
+    backend: matplotlib
+    implementer: plotter-1
+    scope: figs/fig2/
+  - id: fig3
+    contract: contracts/fig3.yaml
+    claim: "The advantage vanishes below 40% capacity"
+    backend: matplotlib
+    implementer: plotter-2
+    scope: figs/fig3/
+  - id: fig1
+    contract: contracts/fig1.yaml
+    claim: "Pipeline overview: alignment stage is the contribution"
+    backend: tikz
+    implementer: plotter-3
+    scope: figs/fig1/
+
+reviewers:
+  - id: critic
+    scope: qa/
+    rounds: [1, 2]
+    rules:
+      - overlay before cropping; never estimate coordinates
+      - evidence is mandatory for every finding
+      - do not edit the figure; hand findings to the implementer
+
+export:
+  owner: exporter
+  scope: out/
+  verifies:
+    - pdf fonts embedded, no Type 3
+    - svg text editable
+    - physical width matches the target column
+    - latex block emitted
+
+lead:
+  writes: contracts/
+  arbitrates: severity disagreements
+  delivers: final artifacts + review records
+
+# Task graph per figure. Across figures these run in parallel; the only true
+# barrier is final delivery.
+tasks:
+  - id: contract
+    owner: lead
+    scope: contracts/
+  - id: implement
+    owner: implementer
+    blocked_by: [contract]
+  - id: lint
+    owner: implementer
+    blocked_by: [implement]
+  - id: review-r1
+    owner: critic
+    blocked_by: [lint]
+  - id: fix
+    owner: implementer
+    blocked_by: [review-r1]
+  - id: review-r2
+    owner: critic
+    blocked_by: [fix]
+    note: start with sf_diff.py against round 1, then crop the clusters
+  - id: export
+    owner: exporter
+    blocked_by: [review-r2]
+  - id: accept
+    owner: lead
+    blocked_by: [export]
+    note: four judgement questions answered, blocking findings at zero
+
+# Every handoff carries these four things, or the receiver guesses:
+handoff_template: |
+  {figure_id} ready for {stage}.
+    source:   {script_path}
+    render:   {png_path} ({width}x{height}, {dpi} dpi)
+    contract: {contract_path} — claim: {claim}
+    lint:     {lint_summary}
+    open:     {open_findings}
+    accepted: {accepted_warnings}
+    target:   {venue} {column} column, {width_mm} mm

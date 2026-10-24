@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "note": "Palettes are design starting points, not compliance claims. Verify the chosen palette against the rendered figure: colour must never be the only channel.",
+  "palettes": {
+    "wong": {
+      "label": "Okabe-Ito / Wong 2011 (colourblind safe)",
+      "colors": ["#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"],
+      "use": "categorical, up to 8 series",
+      "note": "The reference colourblind-safe set. Black is the 8th series, not a background."
+    },
+    "wong-6": {
+      "label": "Wong without black and yellow",
+      "colors": ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9"],
+      "use": "categorical, up to 6 series on white",
+      "note": "Drops the two entries that lose contrast on white or duplicate black."
+    },
+    "tol-bright": {
+      "label": "Paul Tol bright",
+      "colors": ["#4477AA", "#EE6677", "#228833", "#CCBB44", "#66CCEE", "#AA3377", "#BBBBBB"],
+      "use": "categorical, up to 7 series",
+      "note": "Tol's bright scheme; the grey is a neutral 'other' series."
+    },
+    "tol-muted": {
+      "label": "Paul Tol muted",
+      "colors": ["#332288", "#88CCEE", "#44AA99", "#117733", "#999933", "#DDCC77", "#CC6677", "#882255", "#AA4499", "#DDDDDD"],
+      "use": "categorical, up to 10 series",
+      "note": "Muted scheme for print; adjacent entries are ordered to stay distinguishable."
+    },
+    "tol-vibrant": {
+      "label": "Paul Tol vibrant",
+      "colors": ["#0077BB", "#33BBEE", "#009988", "#EE7733", "#CC3311", "#EE3377", "#BBBBBB"],
+      "use": "categorical, posters and slides",
+      "note": "High chroma; not recommended for dense multi-panel print figures."
+    },
+    "ibm": {
+      "label": "IBM design library colourblind safe",
+      "colors": ["#648FFF", "#785EF0", "#DC267F", "#FE6100", "#FFB000"],
+      "use": "categorical, up to 5 series",
+      "note": "Tuned for UI; blue/violet pair separates weakly in grayscale."
+    },
+    "grayscale-6": {
+      "label": "Grayscale sequence",
+      "colors": ["#000000", "#404040", "#737373", "#999999", "#BFBFBF", "#D9D9D9"],
+      "use": "print-only, ordered magnitude",
+      "note": "For B&W journals; pair with distinct markers, never rely on shade alone."
+    },
+    "emphasis": {
+      "label": "One accent plus neutrals",
+      "colors": ["#D55E00", "#0072B2", "#BDBDBD", "#737373", "#000000"],
+      "use": "highlight 1-2 series among context series",
+      "note": "Accent first, then secondary, then two greys for context."
+    },
+    "diverging": {
+      "label": "Diverging around zero (colourblind safe)",
+      "colors": ["#D55E00", "#F0A87C", "#FFFFFF", "#8FC0DC", "#0072B2"],
+      "use": "signed heatmaps and residuals",
+      "note": "Symmetric ramp with a white centre at exactly zero; use a TwoSlopeNorm."
+    },
+    "sequential": {
+      "label": "Sequential (viridis samples)",
+      "colors": ["#440154", "#414487", "#2A788E", "#22A884", "#7AD151", "#FDE725"],
+      "use": "magnitude, ordered values",
+      "note": "Prefer the live 'viridis' colormap; these samples are for discrete legends."
+    }
+  },
+  "colormaps": {
+    "sequential": ["viridis", "cividis", "magma", "Greys"],
+    "diverging": ["RdBu_r", "PuOr_r", "coolwarm"],
+    "cyclic": ["twilight_shifted"],
+    "avoid": ["jet", "rainbow", "hsv", "gist_rainbow", "nipy_spectral", "gist_ncar", "flag", "prism"]
+  }
+}
