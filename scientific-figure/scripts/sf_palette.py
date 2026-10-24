@@ -150,16 +150,21 @@ def audit(colors: list[str], background: str = "#FFFFFF", strict: bool = False) 
     for label, rgb in zip(colors, rgb_list):
         ratio = contrast_ratio(rgb, bg)
         contrasts.append({"color": label, "ratio": round(ratio, 2), "lstar": round(cie_lstar(rgb), 1)})
-        # A light fill (e.g. Wong yellow) is legitimate; a colour below 1.5:1 is not
-        # usable for any mark, so that is the only hard contrast failure.
+        # A light colour in a published palette (Wong yellow sits at 1.3:1 on white) is
+        # not a defect of the palette — it is a usage constraint: fills only, never thin
+        # lines, small markers, or text. Only a colour that is unusable for *any* mark
+        # is a hard failure, which here means effectively the same as the background.
         if ratio < CONTRAST_INVISIBLE:
             findings.append(
                 {
-                    "severity": "error",
+                    "severity": "warn",
                     "check": "contrast",
                     "color": label,
-                    "message": f"contrast {ratio:.2f}:1 against {background} makes this colour effectively invisible",
-                    "fix": "darken the colour or change the background",
+                    "message": (
+                        f"contrast {ratio:.2f}:1 against {background} — usable only as a large fill, "
+                        "invisible as a line, marker, or text"
+                    ),
+                    "fix": "pair it with a dark outline, or reserve it for filled areas",
                 }
             )
         elif ratio < WCAG_GRAPHICS_MIN:

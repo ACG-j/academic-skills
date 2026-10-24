@@ -737,14 +737,20 @@ def run_runtime(path: Path, report: Report) -> None:
     Figure.savefig = hooked_savefig  # type: ignore[method-assign]
     cwd = path.parent
     previous = Path.cwd()
+    # The script under inspection prints whatever it likes ("saved fig1.*"). That output
+    # would land in the middle of this tool's JSON on stdout and break every caller that
+    # parses it, so the child's stdout is redirected to stderr for the duration.
+    real_stdout = sys.stdout
     try:
         import os
 
         os.chdir(cwd)
         sys.path.insert(0, str(cwd))
+        sys.stdout = sys.stderr
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             runpy.run_path(str(path), run_name="__main__")
+        sys.stdout = real_stdout
         missing = [str(w.message) for w in caught if "missing from font" in str(w.message).lower()]
         if missing:
             report.add(
@@ -766,6 +772,7 @@ def run_runtime(path: Path, report: Report) -> None:
         )
         report.facts["traceback"] = traceback.format_exc()[-2000:]
     finally:
+        sys.stdout = real_stdout
         os.chdir(previous)
         if str(cwd) in sys.path:
             sys.path.remove(str(cwd))

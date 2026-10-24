@@ -295,14 +295,20 @@ def discover(outdir: Path) -> list[Path]:
 
 
 def run_script(script: Path) -> dict[str, Any]:
-    """Execute the plotting script in its own directory, capturing output."""
+    """Execute the plotting script in its own directory, capturing its chatter.
+
+    The script prints things like "saved fig1.*". That would interleave with this tool's
+    JSON on stdout, so the child's stdout is redirected to stderr while it runs.
+    """
     cwd = script.parent
     previous = Path.cwd()
+    real_stdout = sys.stdout
     sys.path.insert(0, str(cwd))
     try:
         import os
 
         os.chdir(cwd)
+        sys.stdout = sys.stderr
         runpy.run_path(str(script), run_name="__main__")
         return {"ok": True}
     except SystemExit as exc:
@@ -310,6 +316,7 @@ def run_script(script: Path) -> dict[str, Any]:
     except Exception as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
     finally:
+        sys.stdout = real_stdout
         os.chdir(previous)
         if str(cwd) in sys.path:
             sys.path.remove(str(cwd))

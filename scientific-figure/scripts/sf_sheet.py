@@ -128,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--images", nargs="*", default=[], help="image files, directories, or globs")
     parser.add_argument("--dir", help="directory of images to include")
-    parser.add_argument("--out", default="qa/sheet.png", help="output sheet path")
+    parser.add_argument("-o", "--out", default="qa/sheet.png", help="output sheet path")
     parser.add_argument("--cols", type=int, default=2, help="columns")
     parser.add_argument("--cell", type=int, default=620, help="cell edge in px")
     parser.add_argument("--pad", type=int, default=10, help="padding between cells")
