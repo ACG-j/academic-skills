@@ -53,86 +53,84 @@ def p_value(rv: float, n: int) -> float:
 r = df[traits].corr().values
 N = len(df)
 
-fig = plt.figure(figsize=(215 * MM, 150 * MM))
+fig = plt.figure(figsize=(215 * MM, 145 * MM))
 
-# Grid: k-1 x k-1 scatter cells on the left, legends on the right.
-left, bottom, width, height = 0.055, 0.05, 0.60, 0.60
-cell_w = width / (k - 1)
-cell_h = height / (k - 1)
+# Grid: k x k. Diagonal cells hold the trait names, the lower triangle holds the
+# scatters, and the upper triangle is left empty for the network.
+left, bottom, width, height = 0.055, 0.05, 0.56, 0.62
+cell_w = width / k
+cell_h = height / k
 
 axes = {}
-for i in range(k - 1):
-    for j in range(k - 1):
+for i in range(k):
+    for j in range(k):
         x0 = left + j * cell_w
-        y0 = bottom + (k - 2 - i) * cell_h
-        ax = fig.add_axes([x0, y0, cell_w * 0.92, cell_h * 0.92])
-        axes[(i, j)] = ax
+        y0 = bottom + (k - 1 - i) * cell_h
+        axes[(i, j)] = fig.add_axes([x0, y0, cell_w * 0.93, cell_h * 0.93])
 
-# --- scatter cells and diagonal name boxes -------------------------------
-for i in range(k - 1):
-    for j in range(k - 1):
+for i in range(k):
+    for j in range(k):
         ax = axes[(i, j)]
         if i == j:
             ax.set_xticks([]); ax.set_yticks([])
             ax.text(0.5, 0.5, traits[i].replace("_", "\n"), ha="center", va="center",
-                    fontsize=6.6, transform=ax.transAxes, linespacing=0.95)
+                    fontsize=6.2, transform=ax.transAxes, linespacing=0.90)
             continue
         if i < j:
-            # upper triangle stays empty — the network lives there
-            ax.axis("off")
+            ax.axis("off")          # reserved for the network
             continue
         xv = df[traits[j]].to_numpy()
         yv = df[traits[i]].to_numpy()
         for site, colour in SITE_COLOURS.items():
             for leaf, marker in MARKERS.items():
                 mask = (df["Site"] == site) & (df["Leaf_type"] == leaf)
-                ax.scatter(xv[mask], yv[mask], s=3.2, marker=marker, color=colour,
+                ax.scatter(xv[mask], yv[mask], s=2.6, marker=marker, color=colour,
                            alpha=0.75, linewidths=0)
-        # per-cell least-squares line
         if np.std(xv) > 0 and np.std(yv) > 0:
             b, a = np.polyfit(xv, yv, 1)
             xs = np.array([xv.min(), xv.max()])
-            ax.plot(xs, a + b * xs, color="#2B2B2B", linewidth=0.7, zorder=5)
+            ax.plot(xs, a + b * xs, color="#2B2B2B", linewidth=0.6, zorder=5)
         ax.set_xticks([]); ax.set_yticks([])
 
 # --- network over the upper triangle -------------------------------------
-# Node placement is the whole design. The reference climbs the nodes along the
-# diagonal of the upper triangle: node k sits at (column k, row k). That gives each
-# node its own height, so arcs fan out instead of collapsing onto one horizontal line.
-net = fig.add_axes([left, bottom, width, height * 1.40], frameon=False)
-net.set_xlim(0, width); net.set_ylim(0, height * 1.40)
+# Nodes sit on the TOP-LEFT corner of each diagonal cell, so they descend in a
+# staircase across the matrix. On a flat line the arcs collapse into a braid; on the
+# staircase they span the upper triangle and read as a network.
+net = fig.add_axes([left, bottom, width * 1.10, height * 1.34], frameon=False)
+net.set_xlim(0, width * 1.10); net.set_ylim(0, height * 1.34)
 net.set_xticks([]); net.set_yticks([])
-net.patch.set_alpha(0)
 
 node_x: dict[str, float] = {}
 node_y: dict[str, float] = {}
 for idx, name in enumerate(traits):
-    # x: centre of column idx (the last trait sits beyond the matrix)
-    node_x[name] = (idx + 0.5) * cell_w * 0.94 if idx < k - 1 else width * 0.96
-    # y: climb along the diagonal, but keep the whole ladder ABOVE the matrix so the
-    # nodes never land on the diagonal name boxes.
-    node_y[name] = height + 0.05 + idx * cell_h * 0.26
+    # Top-right corner of diagonal cell (idx, idx): the diagonal cells step down-right,
+    # so their corners form the staircase the arcs hang from.
+    node_x[name] = (idx + 1) * cell_w
+    node_y[name] = (k - idx) * cell_h
 
 for idx, name in enumerate(traits):
-    net.scatter(node_x[name], node_y[name], s=30, color="#9A9A9A", zorder=6, clip_on=False)
-    net.text(node_x[name], node_y[name] + 0.022, name,
-             ha="center", va="bottom", fontsize=6.8, style="italic",
+    net.scatter(node_x[name], node_y[name], s=34, color="#8C8C8C", zorder=6, clip_on=False)
+    # Label above and to the right of the node, clear of both the node and the cell text.
+    net.text(node_x[name] + 0.010, node_y[name] + 0.008, name,
+             ha="left", va="bottom", fontsize=6.6, style="italic",
              clip_on=False, zorder=7)
 
 for a in range(k):
     for b in range(a + 1, k):
         rv = r[a, b]
         pv = p_value(rv, N)
-        if abs(rv) < 0.15 and pv > 0.05:
+        # Draw only edges that carry a claim: a meaningful effect size or a strong
+        # significance. Everything else turns the network into a hairball in which no
+        # single relation can be read, which defeats the purpose of the overlay.
+        if abs(rv) < 0.30 and pv > 0.001:
             continue
         colour = "#C0392B" if rv < 0 else "#2B4C9B"
-        style = "-" if pv < 0.05 else (0, (2, 2))
-        width_pt = 0.4 + 2.4 * abs(rv)
+        style = "-" if pv < 0.05 else (0, (2.2, 2.2))
+        width_pt = 0.35 + 2.6 * abs(rv)
         x1, y1 = node_x[traits[a]], node_y[traits[a]]
         x2, y2 = node_x[traits[b]], node_y[traits[b]]
-        # Bulge proportional to the index gap: long edges arc high, short ones hug.
-        # Generous curvature: the arcs must clear the matrix to read as a network.
-        rad = -0.26 - 0.10 * (b - a) / k
+        # Negative rad bulges the arc up-left, into the empty upper triangle.
+        rad = -0.22 - 0.20 * (b - a) / k
         net.add_patch(
             FancyArrowPatch((x1, y1), (x2, y2),
                             connectionstyle=f"arc3,rad={rad}",
@@ -141,7 +139,7 @@ for a in range(k):
         )
 
 # --- legends -------------------------------------------------------------
-leg = fig.add_axes([0.735, 0.08, 0.255, 0.84])
+leg = fig.add_axes([0.685, 0.06, 0.30, 0.88])
 leg.axis("off")
 leg.set_xlim(0, 1); leg.set_ylim(0, 1)
 

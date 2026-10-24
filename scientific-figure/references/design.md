@@ -217,12 +217,19 @@ The lower triangle is ordinary pairwise scatters. The upper triangle is delibera
 and that emptiness carries the network: trait nodes climb the diagonal, and curved edges
 join them, coloured by the sign of `r`, dashed when `p ≥ 0.05`, thickened by `|r|`.
 
-Two placement rules decide whether it reads:
+Four placement rules decide whether it reads. All four were wrong on the first attempt:
 
-- **Nodes climb.** One cell of height per index. Put them all on one horizontal line and the
-  arcs collapse into an unreadable braid.
-- **Curvature is generous and signed.** `arc3,rad` around −0.3 makes edges bow above the
-  diagonal; a small value produces almost-straight lines that no longer read as a network.
+- **Nodes climb.** One cell of height per index, on the top-right corner of each diagonal
+  cell, so they descend in a staircase. Put them on one horizontal line and the arcs
+  collapse into a short flat braid that reads as nothing.
+- **Curvature is generous and signed.** `arc3,rad` around −0.25 to −0.45 makes edges bow up
+  into the empty triangle. A small magnitude produces near-straight lines.
+- **The data must span the matrix.** A hub that only correlates with its neighbours yields
+  short local arcs. A hub with graded reach across the whole index range — strong to the
+  first few, weak to the last — is what produces the long crossing edges that make the
+  overlay worth drawing.
+- **Filter the edges.** Above roughly 20 edges the network becomes a hairball in which no
+  relation is readable. Draw only `|r| ≥ 0.3` or `p < 0.001`, and say so in the caption.
 
 Keep the network on its own frameless axes so it can overlap the matrix without fighting it
 for layout.
